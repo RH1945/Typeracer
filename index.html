@@ -1,0 +1,437 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>TypeRacer – WPM Test</title>
+    <style>
+        :root{
+            --bg: #0b1020;
+            --card: #121a33;
+            --text: #f5f7ff;
+            --muted:#c7cbe6;
+            --primary:#6aa3ff;
+            --accent:#78dba9;
+            --danger:#ff6b6b;
+            --focus:#ffe066;
+            --border: #223058;
+        }
+        *{box-sizing:border-box}
+        html,body{height:100%}
+        body{
+            margin:0; font:16px/1.6 system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,Cantarell,Noto Sans,sans-serif;
+            color:var(--text); background: radial-gradient(1200px 800px at 10% 0%, #151c36, var(--bg));
+        }
+        a.skip-link{position:absolute;left:-9999px;top:auto;width:1px;height:1px;overflow:hidden}
+        a.skip-link:focus{left:1rem;top:1rem;width:auto;height:auto;padding:.5rem .75rem;background:#000;color:#fff;border-radius:.5rem;z-index:10}
+
+        .container{
+            max-width:1000px;margin:0 auto;padding:clamp(16px,2vw,24px);
+            display:grid;gap:16px;
+        }
+
+        header{
+            display:flex;gap:12px;align-items:center;justify-content:space-between;flex-wrap:wrap;
+        }
+        .title{font-size:clamp(22px, 3vw, 32px);font-weight:800;letter-spacing:.3px}
+        .controls{
+            display:flex;gap:8px;flex-wrap:wrap;align-items:center
+        }
+        .row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+
+        select,button,.btn{appearance:none}
+        select,button{
+            background:var(--card);color:var(--text);border:1px solid var(--border);
+            border-radius:10px;padding:.6rem .8rem;font-weight:600
+        }
+        button{cursor:pointer}
+        button.primary{background:linear-gradient(180deg, #2a58a8, #22498a);border-color:#1f3f78}
+        button.secondary{background:#1a2446}
+        button.warn{background:#3a1e1e;border-color:#5d2a2a}
+        button:disabled{opacity:.6;cursor:not-allowed}
+        button:focus-visible, select:focus-visible, textarea:focus-visible{outline:3px solid var(--focus);outline-offset:2px}
+
+        main{
+            display:grid;gap:16px;grid-template-columns:1fr;grid-auto-rows:min-content
+        }
+
+        .card{background:linear-gradient(180deg, #0e1530, #0c132a);border:1px solid var(--border);border-radius:16px;box-shadow:0 10px 30px rgba(0,0,0,.25)}
+        .card .pad{padding:16px}
+
+        .sample{
+            min-height:96px; padding:16px; border-radius:12px; border:1px dashed var(--border);
+            font-size:clamp(16px, 1.6vw, 18px); line-height:1.8; background:#0b1328
+        }
+        .sample span{padding:2px 1px;border-radius:6px}
+        .word-correct{background:rgba(104,164,255,.18); color:#cfe1ff}
+        .word-incorrect{background:rgba(255,107,107,.18); color:#ffd4d4; text-decoration:underline}
+        .word-current{box-shadow:0 0 0 2px rgba(122,155,255,.35) inset; border-radius:6px}
+
+        textarea{
+            width:100%; min-height:110px; resize:vertical; border-radius:12px;
+            border:1px solid var(--border); background:#0b1328; color:var(--text); padding:12px;
+            font:16px/1.6 ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+        }
+
+        .results{
+            display:grid;grid-template-columns:repeat(auto-fit, minmax(160px, 1fr));gap:12px
+        }
+        .stat{background:#0b1328;border:1px solid var(--border);padding:12px;border-radius:12px}
+        .stat b{font-size:20px}
+
+        .best{display:grid;grid-template-columns:repeat(auto-fit, minmax(190px,1fr));gap:12px}
+
+        .muted{color:var(--muted)}
+        footer{color:var(--muted);font-size:.9rem;text-align:center;padding:12px}
+
+        /* Modal */
+        dialog.modal{border:none;border-radius:16px;max-width:min(720px, 92vw);padding:0;color:var(--text);background:linear-gradient(180deg,#10183a,#0c132a)}
+        .modal header{padding:16px;border-bottom:1px solid var(--border)}
+        .modal .content{padding:16px}
+        .modal .actions{display:flex;justify-content:flex-end;padding:16px;border-top:1px solid var(--border);gap:8px}
+        dialog::backdrop{background:rgba(0,0,0,.55)}
+
+        /* Responsive layout */
+        @media (min-width: 860px){
+            main{grid-template-columns: 1.35fr .65fr}
+            .side{align-self:start; position:sticky; top:12px}
+        }
+
+        @media (prefers-reduced-motion: no-preference){
+            .pulse{animation:pulse 2s infinite}
+            @keyframes pulse{0%{box-shadow:0 0 0 0 rgba(106,163,255,.5)}70%{box-shadow:0 0 0 12px rgba(106,163,255,0)}100%{box-shadow:0 0 0 0 rgba(106,163,255,0)}}
+        }
+    </style>
+</head>
+<body>
+<a class="skip-link" href="#app">Skip to typing test</a>
+<div class="container" id="app">
+    <header>
+        <div class="title" aria-label="TypeRacer Typing Speed Test">⌨️ TypeRacer – WPM Test</div>
+        <div class="controls" role="group" aria-label="Primary controls">
+            <div class="row" aria-label="Difficulty selector">
+                <label for="difficulty" class="visually-hidden">Difficulty</label>
+                <select id="difficulty" aria-label="Select difficulty">
+                    <option value="easy">Easy</option>
+                    <option value="medium">Medium</option>
+                    <option value="hard">Hard</option>
+                </select>
+            </div>
+            <button id="btn-instructions" class="secondary" type="button" aria-haspopup="dialog">Instructions</button>
+            <button id="btn-start" class="primary" type="button">Start</button>
+            <button id="btn-stop" class="warn" type="button" disabled>Stop</button>
+            <button id="btn-retry" class="secondary" type="button" disabled>Retry</button>
+        </div>
+    </header>
+
+    <main>
+        <section class="card" aria-labelledby="sample-label">
+            <div class="pad">
+                <h2 id="sample-label" style="margin:0 0 8px">Sample Text</h2>
+                <div id="sample" class="sample" aria-live="polite"></div>
+            </div>
+            <div class="pad">
+                <label for="input" class="muted">Your typing area</label>
+                <textarea id="input" placeholder="Start the test… (press Start, then type here)" aria-describedby="assistive" disabled></textarea>
+                <div id="assistive" class="muted" style="margin-top:6px">Correct words turn blue, mistakes turn red in real time.</div>
+            </div>
+        </section>
+
+        <aside class="side card" aria-labelledby="results-label">
+            <div class="pad">
+                <h2 id="results-label" style="margin:0 0 8px">Results</h2>
+                <div class="results" aria-live="polite">
+                    <div class="stat" aria-label="Words per minute"><div class="muted">WPM</div><b id="stat-wpm">—</b></div>
+                    <div class="stat" aria-label="Elapsed time"><div class="muted">Time</div><b id="stat-time">—</b></div>
+                    <div class="stat" aria-label="Difficulty level"><div class="muted">Level</div><b id="stat-level">—</b></div>
+                </div>
+            </div>
+            <div class="pad" style="border-top:1px solid var(--border)">
+                <h3 style="margin:0 0 8px">Best Results (by level)</h3>
+                <div class="best" id="best-results" aria-live="polite">
+                    <!-- Filled by JS -->
+                </div>
+            </div>
+        </aside>
+    </main>
+
+    <footer>
+        Built with HTML, CSS, and vanilla JS. Accessible, keyboard-friendly, and responsive. Tip: press <kbd>Esc</kbd> to close the instructions.
+    </footer>
+</div>
+
+<!-- Instructions Modal -->
+<dialog id="modal" class="modal" aria-labelledby="modal-title" aria-describedby="modal-desc">
+    <header>
+        <h2 id="modal-title" style="margin:0">How to take the test</h2>
+        <button id="modal-close" class="secondary" type="button" aria-label="Close instructions">Close</button>
+    </header>
+    <div class="content">
+        <p id="modal-desc">
+            Choose a difficulty, then press <strong>Start</strong>. Type the text shown in the sample area into the input box.
+            Words you type correctly turn <span style="color:var(--primary)">blue</span>; mistakes turn <span style="color:var(--danger)">red</span>.
+            Press <strong>Stop</strong> (or finish the passage) to see your <strong>WPM</strong>, time, and level. Use <strong>Retry</strong> to try the same level again.
+            Your best WPM for each level is saved locally on this device.
+        </p>
+        <ul>
+            <li>All controls are reachable by keyboard. Buttons show a high-contrast focus outline.</li>
+            <li>Color is not the only cue: incorrect words are also underlined.</li>
+            <li>The instructions open in a native <code>&lt;dialog&gt;</code>; press <kbd>Esc</kbd> to close.</li>
+        </ul>
+    </div>
+    <div class="actions">
+        <button id="modal-ok" class="primary" type="button">Got it</button>
+    </div>
+</dialog>
+
+<script>
+    // --- Sample texts by difficulty ---
+    const SAMPLES = {
+        easy: [
+            "The quick brown fox jumps over the lazy dog.",
+            "Typing is fun when you find your flow.",
+            "Practice daily to build speed and accuracy.",
+        ],
+        medium: [
+            "Clear writing reflects clear thinking and steady focus.",
+            "Small habits, repeated, lead to meaningful progress over time.",
+            "Good posture and calm breathing help you type more smoothly.",
+        ],
+        hard: [
+            "Precision under pressure demands measured rhythm and unwavering attention.",
+            "Sustained concentration turns complex tasks into graceful routines.",
+            "Consistency beats bursts; deliberate practice outlasts distraction.",
+        ],
+    };
+
+    // --- State ---
+    let targetWords = [];
+    let level = 'easy';
+    let startTs = null; // performance.now()
+    let running = false;
+
+    // --- Elements ---
+    const difficultyEl = document.getElementById('difficulty');
+    const sampleEl = document.getElementById('sample');
+    const inputEl = document.getElementById('input');
+    const btnStart = document.getElementById('btn-start');
+    const btnStop = document.getElementById('btn-stop');
+    const btnRetry = document.getElementById('btn-retry');
+    const statWpm = document.getElementById('stat-wpm');
+    const statTime = document.getElementById('stat-time');
+    const statLevel = document.getElementById('stat-level');
+    const bestContainer = document.getElementById('best-results');
+
+    const modal = document.getElementById('modal');
+    const btnInstructions = document.getElementById('btn-instructions');
+    const modalClose = document.getElementById('modal-close');
+    const modalOk = document.getElementById('modal-ok');
+
+    // --- Utilities ---
+    const rnd = (arr) => arr[Math.floor(Math.random() * arr.length)];
+    const fmtTime = (ms) => {
+        const s = ms / 1000;
+        return s < 60 ? `${s.toFixed(1)}s` : `${Math.floor(s/60)}m ${(s%60).toFixed(1)}s`;
+    };
+
+    function renderSample(sentence){
+        sampleEl.innerHTML = '';
+        targetWords = sentence.trim().split(/\s+/);
+        targetWords.forEach((w, i) => {
+            const span = document.createElement('span');
+            span.textContent = w + (i < targetWords.length - 1 ? ' ' : '');
+            span.id = `w-${i}`;
+            sampleEl.appendChild(span);
+        });
+        markCurrent(0);
+    }
+
+    function markCurrent(index){
+        // Clear previous current
+        targetWords.forEach((_, i) => {
+            const s = document.getElementById(`w-${i}`);
+            s.classList.remove('word-current');
+        });
+        const cur = document.getElementById(`w-${index}`);
+        if(cur) cur.classList.add('word-current');
+    }
+
+    function updateHighlights(){
+        const text = inputEl.value; // user typed
+        const rawWords = text.split(/\s+/);
+        const atWordBoundary = /\s$/.test(text); // ended with space
+        const completed = atWordBoundary ? rawWords.filter(Boolean).length : Math.max(0, rawWords.filter(Boolean).length - 1);
+        const currentIndex = Math.min(completed, targetWords.length - 1);
+
+        // Reset all
+        targetWords.forEach((_, i) => {
+            const s = document.getElementById(`w-${i}`);
+            s.classList.remove('word-correct','word-incorrect');
+        });
+
+        // Completed words -> correct/incorrect
+        for(let i=0;i<completed;i++){
+            const s = document.getElementById(`w-${i}`);
+            if(!s) break;
+            const typed = rawWords[i] ?? '';
+            const ok = typed === targetWords[i];
+            s.classList.add(ok ? 'word-correct' : 'word-incorrect');
+        }
+
+        // Current word -> live partial check
+        const currentSpan = document.getElementById(`w-${currentIndex}`);
+        if(currentSpan && !atWordBoundary){
+            const partial = rawWords[currentIndex] ?? '';
+            if(partial && !targetWords[currentIndex].startsWith(partial)){
+                currentSpan.classList.add('word-incorrect');
+            }
+        }
+
+        markCurrent(currentIndex);
+    }
+
+    function countCorrectWords(){
+        const typedWords = inputEl.value.trim().split(/\s+/).filter(Boolean);
+        let correct = 0;
+        for(let i=0;i<typedWords.length && i<targetWords.length;i++){
+            if(typedWords[i] === targetWords[i]) correct++;
+        }
+        return correct;
+    }
+
+    function computeWPM(ms){
+        const minutes = ms / 60000;
+        const correct = countCorrectWords();
+        return minutes > 0 ? Math.round((correct / minutes)) : 0; // words per minute
+    }
+
+    function setRunning(state){
+        running = state;
+        btnStart.disabled = state;
+        btnStop.disabled = !state;
+        btnRetry.disabled = !state && !startTs ? true : false; // enable retry after a round has started
+        inputEl.disabled = !state;
+    }
+
+    function resetUI(){
+        inputEl.value = '';
+        statWpm.textContent = '—';
+        statTime.textContent = '—';
+        statLevel.textContent = '—';
+    }
+
+    function startTest(){
+        level = difficultyEl.value;
+        const sentence = rnd(SAMPLES[level]);
+        renderSample(sentence);
+        resetUI();
+        statLevel.textContent = level;
+
+        startTs = performance.now();
+        setRunning(true);
+        inputEl.placeholder = 'Start the test… (type the text above)';
+        inputEl.focus();
+    }
+
+    function finishTest(manual=false){
+        if(!running) return;
+        const elapsed = performance.now() - startTs;
+        const wpm = computeWPM(elapsed);
+
+        statWpm.textContent = String(wpm);
+        statTime.textContent = fmtTime(elapsed);
+        statLevel.textContent = level;
+
+        saveBest(level, wpm, elapsed);
+        renderBest();
+
+        setRunning(false);
+        btnRetry.disabled = false;
+        if(!manual){
+            // Move focus to results for screen readers
+            document.querySelector('.results .stat b').focus?.();
+        }
+    }
+
+    function stopTest(){
+        finishTest(true);
+    }
+
+    function retry(){
+        // restart with same level
+        startTest();
+    }
+
+    function maybeAutoFinish(){
+        // If the user has matched length (including trailing spaces), end the test
+        const typed = inputEl.value.trim();
+        const target = targetWords.join(' ');
+        if(typed === target){
+            finishTest(false);
+        }
+    }
+
+    // --- Best results (localStorage) ---
+    function keyFor(level){ return `best_${level}`; }
+    function saveBest(level, wpm, ms){
+        const k = keyFor(level);
+        try{
+            const existing = JSON.parse(localStorage.getItem(k) || 'null');
+            if(!existing || wpm > existing.wpm){
+                localStorage.setItem(k, JSON.stringify({wpm, ms, ts: Date.now()}));
+            }
+        }catch(e){ /* ignore storage errors */ }
+    }
+    function loadBest(level){
+        try{ return JSON.parse(localStorage.getItem(keyFor(level)) || 'null'); }
+        catch(e){ return null; }
+    }
+    function renderBest(){
+        const levels = ['easy','medium','hard'];
+        bestContainer.innerHTML = '';
+        for(const lv of levels){
+            const data = loadBest(lv);
+            const card = document.createElement('div');
+            card.className='stat';
+            const title = document.createElement('div'); title.className='muted'; title.textContent = lv.toUpperCase();
+            const value = document.createElement('b'); value.textContent = data ? `${data.wpm} WPM` : '—';
+            const small = document.createElement('div'); small.className='muted'; small.style.fontSize = '.85rem';
+            small.textContent = data ? `Best time: ${fmtTime(data.ms)}` : 'No result yet';
+            card.appendChild(title); card.appendChild(value); card.appendChild(small);
+            bestContainer.appendChild(card);
+        }
+    }
+
+    // --- Modal (instructions) ---
+    function openModal(){
+        modal.showModal();
+        // Focus the OK button when opened
+        modalOk.focus();
+    }
+    function closeModal(){ modal.close(); btnInstructions.focus(); }
+
+    // --- Events ---
+    difficultyEl.addEventListener('change', ()=>{ level = difficultyEl.value; });
+    btnStart.addEventListener('click', startTest);
+    btnStop.addEventListener('click', stopTest);
+    btnRetry.addEventListener('click', retry);
+
+    inputEl.addEventListener('input', ()=>{ updateHighlights(); maybeAutoFinish(); });
+
+    // Close on Escape when dialog open is handled natively; also support buttons
+    btnInstructions.addEventListener('click', openModal);
+    modalClose.addEventListener('click', closeModal);
+    modalOk.addEventListener('click', closeModal);
+
+    // Initialize
+    renderSample(rnd(SAMPLES[level]));
+    renderBest();
+
+    // Accessibility niceties: allow Enter on Start/Stop when focused anywhere
+    document.addEventListener('keydown', (e)=>{
+        if(e.key === 'Enter' && !running && document.activeElement === document.body){ startTest(); }
+        if(e.key === 'Escape' && running){ stopTest(); }
+    });
+</script>
+</body>
+</html>
